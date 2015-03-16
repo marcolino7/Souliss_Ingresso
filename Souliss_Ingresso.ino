@@ -1,26 +1,12 @@
 /**************************************************************************
-	--- Souliss ---
-    -- #BUILD:4 --
+	--- Souliss Friariello ---
 
         Controllo Ingresso
-
-
-		'Ciseco Remote Programming
-		'Node Address = 03
-		'Channel Offset = 3
-		'BaudRate = 57600
+			- Temperatura
+			- Conteggio Kw/h
+			- Controllo Luci ingresso
 
 ***************************************************************************/
-//		0x43		Arduino with USART
-
-#define  BOARDTYPE_INSKETCH
-#define  QC_BOARDTYPE			0x43    //		0x43		Arduino with USART
-
-#define  GATEWAYTYPE_INSKETCH
-#define	QC_GATEWAYTYPE			0x00    //0x00 None
-
-#define INTERFACE_INSKETCH
-#define	QC_INTERFACE			0x00	//0x00 None
 
 #define USARTDRIVER_INSKETCH
 #define USART_TXENABLE			0
@@ -28,29 +14,35 @@
 
 #define USART_DEBUG  			0
 
-#define USARTDRIVER_INSKETCH
-#define	USARTDRIVER				Serial3 //Dico al driver vNet di usare la seriale 3 della IBoard Pro
+// Configure the framework
+#include "bconf/StandardArduino.h"				// Use a standard Arduino
+#include "conf/ethENC28J60.h"					// Ethernet through ENC28j60
 
+// Include framework code and libraries
+#include <SPI.h>
 #include "Souliss.h"
-#include "SpeakEasy.h"
-#include "Typicals.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-// network addresses
-#define myvNet_address		0xCE03
-#define myvNet_subnet		0xFF00
-#define myvNet_supern		0x0000
+// Define the network configuration according to your router settings
+uint8_t ip_address[4]  = {192, 168, 1, 130};
+uint8_t subnet_mask[4] = {255, 255, 255, 0};
+uint8_t ip_gateway[4]  = {192, 168, 1, 1};
 
-#define TAMB		0   //T19 ID Logico del Led del Tipico 19
+// network addresses
+#define eth_address				ip_address[3]	// The last byte of the IP address (130) is also the vNet address
+#define myvNet_subnet			0xFF00
+#define myvNet_supern			0x0000
+
+#define TAMB		0			//Slot che contiene la temperatura ambiente
 
 #define DEADBAND      0.05  //Se la variazione è superio del 5% aggiorno
 #define DEADBANDNTC   0.01  //Se la variazione è superio del 1% aggiorno
 #define NODEADBAND	  0 //Se la variazione è superio del 0,1% aggiorno
 
 //Sonda
-#define ONE_WIRE_BUS 37
-#define TEMPERATURE_PRECISION 9
+#define ONE_WIRE_BUS			37
+#define TEMPERATURE_PRECISION	9
 float t_amb;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
@@ -62,14 +54,16 @@ U8 data_chg = 1;
 
 void setup()
 {	
-	Souliss_SetAddress(myvNet_address, myvNet_subnet, myvNet_supern);		
+	Souliss_SetAddress(eth_address, myvNet_subnet, myvNet_supern);		
 	Serial.begin(115200);
 	Serial.println("INIT");
-	//T52 Temperatur DHT
-	Souliss_SetT52(memory_map, TAMB);
 
+	Souliss_SetT52(memory_map, TAMB);	//Impsoto il tipico per contenere la temperatura
+
+	//Imposto la sonda DS18B20
 	sensors.setResolution(insideThermometer, TEMPERATURE_PRECISION);
 	sensors.getAddress(insideThermometer, 0);
+
 }
 
 void loop()
