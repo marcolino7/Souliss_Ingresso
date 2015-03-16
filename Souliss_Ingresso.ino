@@ -39,8 +39,8 @@ uint8_t ip_gateway[4]  = {192, 168, 1, 1};
 #define NODEADBAND	  0				//Se la variazione è superio del 0,1% aggiorno
 
 #define PIN_LIGHT_SW		5		//Piedino che controlla il relè
-#define PIN_LIGHT_STATUS	6		//Piedino che verifica lo stato delle luci
-#define PIN_DS18B20			37		//Piedino della sonda DS18B20
+#define PIN_LIGHT_STATUS	7		//Piedino che verifica lo stato delle luci
+#define PIN_DS18B20			6		//Piedino della sonda DS18B20
 
 //Sonda Temperatura
 #define TEMPERATURE_PRECISION	9	
@@ -65,9 +65,13 @@ void setup()
 	Serial.begin(115200);
 	Serial.println("Node INIT");
 
-	
-	Souliss_SetT52(memory_map, TAMB);	//Impsoto il tipico per contenere la temperatura
-	Souliss_SetT57(memory_map, WATT);	//Imposto il tipico per contenere i watt	
+	//Imposto i Pin Mode
+	pinMode(PIN_LIGHT_SW,OUTPUT);			//Controllo Relè
+	pinMode(PIN_LIGHT_STATUS,INPUT);		//Stato delle luci, fotoaccoppiatore
+
+	//Definisco i Tipici
+	Souliss_SetT52(memory_map, TAMB);		//Impsoto il tipico per contenere la temperatura
+	Souliss_SetT57(memory_map, WATT);		//Imposto il tipico per contenere i watt	
 	Souliss_SetT14(memory_map, LIGHT_SW);	//Impsoto il tipico per contenere la temperatura
 
 	//Imposto la sonda DS18B20
@@ -84,6 +88,7 @@ void loop()
 		UPDATEFAST();
 		FAST_50ms() {	// We process the logic and relevant input and output every 50 milliseconds
 
+			Souliss_DigOut(PIN_LIGHT_SW,Souliss_T1n_OnCoil,memory_map,LIGHT_SW);
 			
 		}
 
@@ -103,7 +108,7 @@ void loop()
 		FAST_510ms() {	
 			//Logica per controllare il relè delle luci
 			Souliss_Logic_T14(memory_map,LIGHT_SW,&data_changed);
-			Souliss_DigOut(PIN_LIGHT_SW,Souliss_T1n_OnCoil,memory_map,LIGHT_SW);
+			
 
 			//Logica per controllare il Watt Meter
 			Souliss_Logic_T57(memory_map, WATT, NODEADBAND, &data_changed);
