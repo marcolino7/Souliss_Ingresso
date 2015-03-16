@@ -70,9 +70,10 @@ void setup()
 	pinMode(PIN_LIGHT_STATUS,INPUT);		//Stato delle luci, fotoaccoppiatore
 
 	//Definisco i Tipici
-	Souliss_SetT52(memory_map, TAMB);		//Impsoto il tipico per contenere la temperatura
-	Souliss_SetT57(memory_map, WATT);		//Imposto il tipico per contenere i watt	
-	Souliss_SetT14(memory_map, LIGHT_SW);	//Impsoto il tipico per contenere la temperatura
+	Souliss_SetT52(memory_map, TAMB);				//Impsoto il tipico per contenere la temperatura
+	Souliss_SetT57(memory_map, WATT);				//Imposto il tipico per contenere i watt	
+	Souliss_SetT14(memory_map, LIGHT_SW);			//Impsoto il tipico per contenere la temperatura
+	Souliss_SetT13(memory_map, LIGHT_STATUS);	//Imposto il Tipico per lo stato della luce in ingresso
 
 	//Imposto la sonda DS18B20
 	sensors.setResolution(insideThermometer, TEMPERATURE_PRECISION);
@@ -88,8 +89,9 @@ void loop()
 		UPDATEFAST();
 		FAST_50ms() {	// We process the logic and relevant input and output every 50 milliseconds
 
-			Souliss_DigOut(PIN_LIGHT_SW,Souliss_T1n_OnCoil,memory_map,LIGHT_SW);
-			
+			Souliss_DigOut(PIN_LIGHT_SW,Souliss_T1n_OnCoil,memory_map,LIGHT_SW);	//T14 Pulsante Luci
+			Souliss_DigIn2State(PIN_LIGHT_STATUS, Souliss_T1n_OnCmd, Souliss_T1n_OffCmd, memory_map, LIGHT_STATUS);	//T13 Stato Luci
+
 		}
 
 		FAST_70ms() {
@@ -97,7 +99,7 @@ void loop()
 		}
 
 		FAST_90ms() { 
-			
+			Souliss_Logic_T13(memory_map, LIGHT_STATUS,&data_chg);
 		}
 
 		FAST_110ms() {
