@@ -35,19 +35,28 @@ uint8_t ip_gateway[4]  = {192, 168, 1, 1};
 #define myvNet_supern			0x0000
 
 #define TAMB		0			//Slot che contiene la temperatura ambiente
+#define WATT		2			//Slot per contenere i kW/h letti
+#define LIGHT_SW	4			//Comando accensione spegnimento luce corridoio
+
 
 #define DEADBAND      0.05  //Se la variazione è superio del 5% aggiorno
 #define DEADBANDNTC   0.01  //Se la variazione è superio del 1% aggiorno
 #define NODEADBAND	  0 //Se la variazione è superio del 0,1% aggiorno
 
-//Sonda
-#define ONE_WIRE_BUS			37
-#define TEMPERATURE_PRECISION	9
+//Sonda Temperatura
+#define ONE_WIRE_BUS			37	//Piedino della sonda
+#define TEMPERATURE_PRECISION	9	
 float t_amb;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 DeviceAddress insideThermometer;
 
+//Conteggio dei watt
+long pulseCount = 0;				//Number of pulses, used to measure energy.
+unsigned long pulseTime,lastTime;	//Used to measure power.
+double power, elapsedkWh;			//power and energy
+//Number of pulses per wh - found or set on the meter.
+int ppwh = 1; //1000 pulses/kwh = 1 pulse per wh
 
 // flag 
 U8 data_chg = 1;
@@ -58,12 +67,17 @@ void setup()
 	Serial.begin(115200);
 	Serial.println("INIT");
 
+	
 	Souliss_SetT52(memory_map, TAMB);	//Impsoto il tipico per contenere la temperatura
+	Souliss_SetT57(memory_map, WATT);	//Imposto il tipico per contenere i watt	
+	Souliss_SetT14(memory_map, LIGHT_SW);	//Impsoto il tipico per contenere la temperatura
 
 	//Imposto la sonda DS18B20
 	sensors.setResolution(insideThermometer, TEMPERATURE_PRECISION);
 	sensors.getAddress(insideThermometer, 0);
 
+	//Imposto l'iterrupt IRQ1 al pin 3 sul fronte di salita
+	attachInterrupt(1, onPulse, FALLING);
 }
 
 void loop()
@@ -89,7 +103,7 @@ void loop()
 		}
 
 		FAST_510ms() {	// We retrieve data from the node with index 1 (peervNet_address)
-
+			Souliss_Logic_T57(memory_map, WATT, NODEADBAND, &data_changed);
 		}
 
 		FAST_1110ms() {
@@ -119,4 +133,29 @@ void DSRead() {
 
 	 Serial.print("Temp C: ");
 	 Serial.println(t_amb);
+}
+
+void onPulse() {
+	// The interrupt routine
+
+	//used to measure time between pulses.
+	lastTime = pulseTime;
+	pulseTime = micros();
+
+	//pulseCounter
+	pulseCount++;
+
+	//Calculate power
+	power = (3600000000.0 / (pulseTime - lastTime))/ppwh;
+  
+	//Find kwh elapsed
+	elapsedkWh = (1.0*pulseCount/(ppwh*1000)); //multiply by 1000 to pulses per wh to kwh convert wh to kwh
+
+	float f_power = (float) power;
+	Souliss_ImportAnalog(memory_map, WATT, &f_power);
+
+	//Print the values.
+	Serial.print(power,4);
+	Serial.print(" ");
+	Serial.println(elapsedkWh,3);
 }
