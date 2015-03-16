@@ -5,14 +5,9 @@
 			- Temperatura
 			- Conteggio Kw/h
 			- Controllo Luci ingresso
+			- Verifica se luci ingresso sono accese
 
 ***************************************************************************/
-
-#define USARTDRIVER_INSKETCH
-#define USART_TXENABLE			0
-#define USART_TXENPIN			3
-
-#define USART_DEBUG  			0
 
 // Configure the framework
 #include "bconf/StandardArduino.h"				// Use a standard Arduino
@@ -34,20 +29,23 @@ uint8_t ip_gateway[4]  = {192, 168, 1, 1};
 #define myvNet_subnet			0xFF00
 #define myvNet_supern			0x0000
 
-#define TAMB		0			//Slot che contiene la temperatura ambiente
-#define WATT		2			//Slot per contenere i kW/h letti
-#define LIGHT_SW	4			//Comando accensione spegnimento luce corridoio
+#define TAMB			0			//Slot che contiene la temperatura ambiente
+#define WATT			2			//Slot per contenere i kW/h letti
+#define LIGHT_SW		4			//Comando accensione spegnimento luce corridoio
+#define LIGHT_STATUS	5			//Slot che contiene lo stato delle luci all'ingresso
 
+#define DEADBAND      0.05			//Se la variazione è superio del 5% aggiorno
+#define DEADBANDNTC   0.01			//Se la variazione è superio del 1% aggiorno
+#define NODEADBAND	  0				//Se la variazione è superio del 0,1% aggiorno
 
-#define DEADBAND      0.05  //Se la variazione è superio del 5% aggiorno
-#define DEADBANDNTC   0.01  //Se la variazione è superio del 1% aggiorno
-#define NODEADBAND	  0 //Se la variazione è superio del 0,1% aggiorno
+#define PIN_LIGHT_SW		5		//Piedino che controlla il relè
+#define PIN_LIGHT_STATUS	6		//Piedino che verifica lo stato delle luci
+#define PIN_DS18B20			37		//Piedino della sonda DS18B20
 
 //Sonda Temperatura
-#define ONE_WIRE_BUS			37	//Piedino della sonda
 #define TEMPERATURE_PRECISION	9	
 float t_amb;
-OneWire oneWire(ONE_WIRE_BUS);
+OneWire oneWire(PIN_DS18B20);
 DallasTemperature sensors(&oneWire);
 DeviceAddress insideThermometer;
 
@@ -65,7 +63,7 @@ void setup()
 {	
 	Souliss_SetAddress(eth_address, myvNet_subnet, myvNet_supern);		
 	Serial.begin(115200);
-	Serial.println("INIT");
+	Serial.println("Node INIT");
 
 	
 	Souliss_SetT52(memory_map, TAMB);	//Impsoto il tipico per contenere la temperatura
@@ -102,25 +100,29 @@ void loop()
 			Souliss_CommunicationData(memory_map, &data_chg);
 		}
 
-		FAST_510ms() {	// We retrieve data from the node with index 1 (peervNet_address)
+		FAST_510ms() {	
+			//Logica per controllare il relè delle luci
+			Souliss_Logic_T14(memory_map,LIGHT_SW,&data_changed);
+			Souliss_DigOut(PIN_LIGHT_SW,Souliss_T1n_OnCoil,memory_map,LIGHT_SW);
+
+			//Logica per controllare il Watt Meter
 			Souliss_Logic_T57(memory_map, WATT, NODEADBAND, &data_changed);
 		}
 
 		FAST_1110ms() {
+			//Logica per controllare la sonda di temperatura
 			Souliss_Logic_T52(memory_map, TAMB, NODEADBAND, &data_changed);
 		}
 
         FAST_2110ms() {
-			DSRead();
+			DSRead();	//Routine per leggere il valore della sonda e importarlo in Souliss
         }
 
 }
 	
 	EXECUTESLOW() {
 		UPDATESLOW();
-
-		SLOW_10s() {		// We handle the light timer with a 10 seconds base time
-			
+		SLOW_10s() {
 		}
 	}		
 }
@@ -136,19 +138,19 @@ void DSRead() {
 }
 
 void onPulse() {
-	// The interrupt routine
+	// The interrupt routine, viene lanciata a ogni lampeggio del led
 
-	//used to measure time between pulses.
+	//usato per misurare il tempo tra gli impulsi.
 	lastTime = pulseTime;
 	pulseTime = micros();
 
 	//pulseCounter
 	pulseCount++;
 
-	//Calculate power
+	//Calcolo la potenza
 	power = (3600000000.0 / (pulseTime - lastTime))/ppwh;
   
-	//Find kwh elapsed
+	//kw/h consumati
 	elapsedkWh = (1.0*pulseCount/(ppwh*1000)); //multiply by 1000 to pulses per wh to kwh convert wh to kwh
 
 	float f_power = (float) power;
