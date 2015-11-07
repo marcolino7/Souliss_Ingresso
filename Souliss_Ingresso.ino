@@ -46,7 +46,7 @@
 
 
 // network addresses
-#define myvNet_address		0xCE04
+#define myvNet_address		0xCE03		//Nodo Ingresso
 #define myvNet_subnet		0xFF00
 #define myvNet_supern		0x0000
 
