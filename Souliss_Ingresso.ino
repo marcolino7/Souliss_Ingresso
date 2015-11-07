@@ -52,7 +52,7 @@
 
 #define HDEADBAND	  0.50	
 #define DEADBAND      0.05			//Se la variazione è superio del 5% aggiorno
-#define DEADBANDLOW   0.01			//Se la variazione è superio del 1% aggiorno
+#define LDEADBAND   0.01			//Se la variazione è superio del 1% aggiorno
 #define NODEADBAND	  0				//Se la variazione è superio del 0,1% aggiorno
 
 //----------- Define Typical
@@ -97,10 +97,9 @@ DeviceAddress insideThermometer;
 // flag 
 //U8 data_chg = 1;
 
+
 void setup()
 {	
-	
-
 	Souliss_SetAddress(myvNet_address, myvNet_subnet, myvNet_supern);
 	
 	//Imposto i Pin Mode
@@ -120,7 +119,7 @@ void setup()
 	Souliss_SetT11(memory_map, T_RELE_2);		//Relè 2
 	
 	//initialize Emon instance
-	//emon1.current(PIN_CT_1, ct_calib_1);
+	emon1.current(PIN_CT_1, ct_calib_1);
 	
 	//Imposto la sonda DS18B20
 	sensors.setResolution(insideThermometer, TEMPERATURE_PRECISION);
@@ -141,7 +140,7 @@ void loop()
 			Souliss_DigOut(PIN_RELE_2, Souliss_T1n_Coil, memory_map, T_RELE_2);
 
 			//Legge la presenza di corrente dal T13
-			Souliss_LowDigIn2State(PIN_220_1, Souliss_T1n_OnCmd, Souliss_T1n_OffCmd, memory_map, T_220);
+			Souliss_LowDigIn2State(PIN_220_2, Souliss_T1n_OnCmd, Souliss_T1n_OffCmd, memory_map, T_220);
 
 
 		}
@@ -154,19 +153,22 @@ void loop()
 
 		FAST_90ms() {
 			//processa Corrente e Potenza
-			//Souliss_Logic_T56(memory_map, T_CT_1_A, HDEADBAND, &data_changed);
-			//Souliss_Logic_T57(memory_map, T_CT_1_W, HDEADBAND, &data_changed);
+			Souliss_Logic_T56(memory_map, T_CT_1_A, LDEADBAND, &data_changed);
+			Souliss_Logic_T57(memory_map, T_CT_1_W, LDEADBAND, &data_changed);
 		}
 
 		FAST_110ms() {
 			//Processa la logica per la temperatura
 			Souliss_Logic_T52(memory_map, T_TEMP, NODEADBAND, &data_changed);
 		}
-
-		FAST_510ms() {
-			//PowerRead_1();
+		
+		FAST_210ms() {
+			PowerRead_1();
 		}
-
+		
+		FAST_510ms() {
+		}
+		
 		FAST_1110ms() {
 		}
 
@@ -197,5 +199,5 @@ void PowerRead_1() {
 	Souliss_ImportAnalog(memory_map, T_CT_1_A, &Irms_1);
 	watt = Irms_1*volt_1;
 	Souliss_ImportAnalog(memory_map, T_CT_1_W, &watt);
-
+	
 }
