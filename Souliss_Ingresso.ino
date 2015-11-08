@@ -132,6 +132,12 @@ void loop()
 {
 	EXECUTEFAST() {						
 		UPDATEFAST();
+		FAST_x10ms(10) {
+			// The output coil to the step relay is active for five cycle, so approximately five times 100 ms
+			// use a different value to match your requirements
+			Souliss_T18_Timer(memory_map, T_LUCE);
+		}
+
 		FAST_50ms() {
 			// Legge lo stato e Invia il comando al Relè delle luci dal T18
 			Souliss_DigOut(PIN_RELE_1, Souliss_T1n_ToggleCmd, memory_map,T_LUCE);
