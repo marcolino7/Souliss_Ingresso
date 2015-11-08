@@ -53,6 +53,7 @@
 #define HDEADBAND	  0.50	
 #define DEADBAND      0.05			//Se la variazione è superio del 5% aggiorno
 #define LDEADBAND   0.01			//Se la variazione è superio del 1% aggiorno
+#define MDEADBAND	0.03
 #define NODEADBAND	  0				//Se la variazione è superio del 0,1% aggiorno
 
 //----------- Define Typical
@@ -113,7 +114,7 @@ void setup()
 	Souliss_SetT18(memory_map, T_LUCE);			//Tipico per gestire le luci all'ingresso
 	Souliss_SetT52(memory_map, T_TEMP);			//Tipico per leggere la temperatura
 	Souliss_SetT57(memory_map, T_CT_1_W);		//Imposto il tipico per contenere i watt
-	Souliss_SetT56(memory_map, T_CT_1_A);		//Imposto il tipico per contenere gli ampere
+	Souliss_SetT52(memory_map, T_CT_1_A);		//Imposto il tipico per contenere gli ampere
 	Souliss_SetT13(memory_map, T_220);			//Imposto il tipico per la presenza di corrente
 
 	Souliss_SetT11(memory_map, T_RELE_2);		//Relè 2
@@ -152,28 +153,29 @@ void loop()
 		}
 
 		FAST_90ms() {
-			//processa Corrente e Potenza
-			Souliss_Logic_T56(memory_map, T_CT_1_A, LDEADBAND, &data_changed);
-			Souliss_Logic_T57(memory_map, T_CT_1_W, LDEADBAND, &data_changed);
+			
 		}
 
 		FAST_110ms() {
-			//Processa la logica per la temperatura
-			Souliss_Logic_T52(memory_map, T_TEMP, NODEADBAND, &data_changed);
+			//processa Corrente e Potenza
+			Souliss_Logic_T52(memory_map, T_CT_1_A, MDEADBAND, &data_changed);
+			Souliss_Logic_T57(memory_map, T_CT_1_W, MDEADBAND, &data_changed);
 		}
 		
 		FAST_210ms() {
-			PowerRead_1();
+			//Processa la logica per la temperatura
+			Souliss_Logic_T52(memory_map, T_TEMP, NODEADBAND, &data_changed);
 		}
 		
 		FAST_510ms() {
 		}
 		
 		FAST_1110ms() {
+			PowerRead_1();
 		}
 
         FAST_2110ms() {
-			DSRead();	//Routine per leggere il valore della sonda e importarlo in Souliss
+			
         }
 		FAST_PeerComms();
 }
@@ -181,6 +183,7 @@ void loop()
 	EXECUTESLOW() {
 		UPDATESLOW();
 		SLOW_10s() {
+			DSRead();	//Routine per leggere il valore della sonda e importarlo in Souliss
 		}
 	}		
 }
