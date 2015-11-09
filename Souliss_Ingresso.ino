@@ -50,11 +50,11 @@
 #define myvNet_subnet		0xFF00
 #define myvNet_supern		0x0000
 
-#define HDEADBAND	  0.50	
-#define DEADBAND      0.05			//Se la variazione è superio del 5% aggiorno
-#define LDEADBAND   0.01			//Se la variazione è superio del 1% aggiorno
-#define MDEADBAND	0.03
-#define NODEADBAND	  0				//Se la variazione è superio del 0,1% aggiorno
+#define HDEADBAND		0.50	
+#define DEADBAND		0.05			//Se la variazione è superio del 5% aggiorno
+#define LDEADBAND		0.01			//Se la variazione è superio del 1% aggiorno
+#define MDEADBAND		0.03
+#define NODEADBAND		0				//Se la variazione è superio del 0,1% aggiorno
 
 //----------- Define Typical
 #define T_LUCE		0	//Tipico per Gestire l'illuminazione in corridoio con step relay
@@ -163,9 +163,7 @@ void loop()
 		}
 
 		FAST_110ms() {
-			//processa Corrente e Potenza
-			Souliss_Logic_T52(memory_map, T_CT_1_A, MDEADBAND, &data_changed);
-			Souliss_Logic_T57(memory_map, T_CT_1_W, MDEADBAND, &data_changed);
+			
 		}
 		
 		FAST_210ms() {
@@ -175,7 +173,15 @@ void loop()
 		
 		FAST_510ms() {
 		}
-		
+
+		SHIFT_510ms(1) {
+			Souliss_Logic_T52(memory_map, T_CT_1_A, DEADBAND, &data_changed);
+		}
+
+		SHIFT_510ms(2) {
+			Souliss_Logic_T57(memory_map, T_CT_1_W, DEADBAND, &data_changed);
+		}
+
 		FAST_1110ms() {
 			PowerRead_1();
 		}
