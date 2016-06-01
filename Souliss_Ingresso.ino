@@ -20,12 +20,12 @@
 		- A0-14		PIN_CT_1		CT Sens 1
 		- A1-15		PIN_CT_2		CT Sens 2
 		- A2-16		PIN_CT_3		CT Sens 3
-		- A3-17		PIN_AUX_1		Ingresso AUX 1
+		- A3-17		PIN_AUX_1		Ingresso AUX 1 - Voltage Sensor
 		- A4-18		PIN_AUX_2		Ingresso AUX 2
 		- A5-19		PIN_RELE_2		Relè 2
 
 		Ciseco Remote Programming
-		Node Address = 04
+		Node Address = 03
 		Channel Offset = 3
 		BaudRate = 57600
 
@@ -63,6 +63,7 @@
 #define T_CT_1_A	5	//CT Sens 1 Ampere
 #define T_220		7	//Presenza 220Volt
 #define T_RELE_2	8	//T11
+#define T_VOLT		9	//T52 voltage
 
 
 //------------Define PIN
@@ -80,9 +81,11 @@
 
 //Sensore di Corrente 1
 	//Calibrazione
-const int volt_1 = 230;
-const float ct_calib_1 = 29.7;
+//const int volt_1 = 230;
+const float ct_calib_1 = 28.8; //old @ 15/1/2016 29.7;
+const float vt_calib = 205;
 	//Variabili
+float volt_1 = 0;
 float Irms_1 = 0;
 
 // Create an Emon instance
@@ -116,12 +119,13 @@ void setup()
 	Souliss_SetT57(memory_map, T_CT_1_W);		//Imposto il tipico per contenere i watt
 	Souliss_SetT52(memory_map, T_CT_1_A);		//Imposto il tipico per contenere gli ampere
 	Souliss_SetT13(memory_map, T_220);			//Imposto il tipico per la presenza di corrente
-
 	Souliss_SetT11(memory_map, T_RELE_2);		//Relè 2
-	
+	Souliss_SetT52(memory_map, T_VOLT);		//Imposto il tipico per contenere gli ampere
+
 	//initialize Emon instance
 	emon1.current(PIN_CT_1, ct_calib_1);
-	
+	emon1.voltage(PIN_AUX_1, vt_calib, 1.7);
+
 	//Imposto la sonda DS18B20
 	sensors.setResolution(insideThermometer, TEMPERATURE_PRECISION);
 	sensors.getAddress(insideThermometer, 0);
@@ -175,11 +179,15 @@ void loop()
 		}
 
 		SHIFT_510ms(1) {
-			Souliss_Logic_T52(memory_map, T_CT_1_A, DEADBAND, &data_changed);
+			Souliss_Logic_T52(memory_map, T_CT_1_A, MDEADBAND, &data_changed);
 		}
 
 		SHIFT_510ms(2) {
-			Souliss_Logic_T57(memory_map, T_CT_1_W, DEADBAND, &data_changed);
+			Souliss_Logic_T57(memory_map, T_CT_1_W, MDEADBAND, &data_changed);
+		}
+
+		SHIFT_510ms(3) {
+			Souliss_Logic_T52(memory_map, T_VOLT, MDEADBAND, &data_changed);
 		}
 
 		FAST_1110ms() {
@@ -209,9 +217,13 @@ void DSRead() {
 
 void PowerRead_1() {
 	//Leggo la potenza dalla sonda CT
+	emon1.calcVI(20, 2000);
 	float watt = 0;
-	Irms_1 = emon1.calcIrms(1480);
+	//Irms_1 = emon1.calcIrms(1480);
+	Irms_1 = emon1.Irms;
 	Souliss_ImportAnalog(memory_map, T_CT_1_A, &Irms_1);
+	volt_1 = emon1.Vrms;
+	Souliss_ImportAnalog(memory_map, T_VOLT, &volt_1);
 	watt = Irms_1*volt_1;
 	Souliss_ImportAnalog(memory_map, T_CT_1_W, &watt);
 	
